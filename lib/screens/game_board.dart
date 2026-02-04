@@ -6,6 +6,7 @@ import '../utils/game_logic.dart';
 import '../widgets/card_widget.dart';
 
 class GameBoard extends StatefulWidget {
+  final Difficulty difficulty; //Trayendo la difficultad
   const GameBoard({super.key});
 
   @override
@@ -27,7 +28,8 @@ class _GameBoardState extends State<GameBoard> {
 
   void _startNewGame() {
     setState(() {
-      cards = GameLogic.generateCards();
+      //Tomando en cuenta la dificultad para generar las cartas
+      cards = GameLogic.generateCards(widget.difficulty);
       flippedIndices = [];
       attempts = 0;
       isProcessing = false;
@@ -115,7 +117,7 @@ class _GameBoardState extends State<GameBoard> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: cards.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 6, 
+                crossAxisCount: widget.difficulty.cols, //Con la cantidad de columnas correspondiente 
                 childAspectRatio: 0.9, 
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
