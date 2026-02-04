@@ -11,6 +11,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int highScore = 0; // Aquí guardaremos el récord más adelante
+  Difficulty selectedDifficulty = Difficulty.medio; //Valor por defecto de la dificultad
 
   @override
   Widget build(BuildContext context) {
@@ -36,14 +37,29 @@ class _HomeScreenState extends State<HomeScreen> {
               style: const TextStyle(fontSize: 18, color: Colors.grey),
             ),
             const SizedBox(height: 50),
-            
+            Text('Selecciona dificultad:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, Colors.grey[700])),
+            DropdownButton<Difficulty>(
+              value: selectedDifficulty, 
+              onChanged: (Difficulty? newValue) {
+                setState(() {
+                  selectedDifficulty = newValue!;
+                });
+              },
+              items: Difficulty.values.map((Difficulty level) {
+                return DropdownMenuItem<Difficulty>(
+                  value: level,
+                  child: Text("$level.name (${level.rows}x${level.cols})", style: TextStyle(backgroundColor: level.colorDisplay)),
+                );
+              }).toList(),
+            ),
             // Botón para ir al juego
             ElevatedButton.icon(
               onPressed: () {
                 // Navegación hacia el Tablero
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const GameBoard()),
+                  MaterialPageRoute(builder: (_) => const GameBoard(difficulty: selectedDifficulty),
+                  ),
                 );
               },
               icon: const Icon(Icons.play_arrow),

@@ -1,6 +1,7 @@
 // Archivo: lib/utils/game_logic.dart
 import 'package:flutter/material.dart';
 import '../models/card_model.dart';
+import '../models/difficulty_model.dart';
 
 class GameLogic {
   // Lista de 18 iconos para formar los pares (36 cartas en total)
@@ -26,9 +27,14 @@ class GameLogic {
   ];
 
   // Función para generar y mezclar las cartas
-  static List<CardModel> generateCards() {
+  static List<CardModel> generateCards(Difficulty difficulty) {
+    //0. Obteniendo solo las cartas necesarias para el modo de dificultad 
+    int pairsNeeded = difficulty.totalCards ~/2;
+
+    List<IconData> neededIcons = cardIcons.sublist(0, pairsNeeded);
+
     // 1. Duplicamos la lista para tener parejas
-    List<IconData> allIcons = [...cardIcons, ...cardIcons];
+    List<IconData> allIcons = [...neededIcons, ...neededIcons];
     
     // 2. Mezclamos los iconos aleatoriamente
     allIcons.shuffle();
