@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # Librerias del proyecto
+  # Librerias
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.3.5
   animate_do: ^3.3.4

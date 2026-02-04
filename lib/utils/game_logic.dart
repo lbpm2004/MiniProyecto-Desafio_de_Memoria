@@ -1,10 +1,8 @@
-// Archivo: lib/utils/game_logic.dart
 import 'package:flutter/material.dart';
 import '../models/card_model.dart';
 import '../models/difficulty_model.dart';
 
 class GameLogic {
-  // Lista de 18 iconos para formar los pares (36 cartas en total)
   static final List<IconData> cardIcons = [
     Icons.star,
     Icons.favorite,
@@ -24,22 +22,41 @@ class GameLogic {
     Icons.local_pizza,
     Icons.local_florist,
     Icons.music_note,
+    Icons.flight,
+    Icons.home,
+    Icons.work,
   ];
 
   // Función para generar y mezclar las cartas
   static List<CardModel> generateCards(Difficulty difficulty) {
-    //0. Obteniendo solo las cartas necesarias para el modo de dificultad 
-    int pairsNeeded = difficulty.totalCards ~/2;
+    int pairsNeeded;
+    String nivelNombre = difficulty.name.toLowerCase();
 
+    // 0. DETERMINAR PARES SEGÚN EL NIVEL (Override manual para asegurar consistencia)
+    if (nivelNombre.contains("experto")) {
+      pairsNeeded = 18; // 36 cartas (6x6)
+    } else if (nivelNombre.contains("avanzado")) {
+      pairsNeeded = 15; // 30 cartas (5x6)
+    } else {
+      // Para principieante, usamo 8 pares (4x4)
+      pairsNeeded = 8; 
+    }
+
+    // Validación de seguridad: No pedir más iconos de los que tenemos
+    if (pairsNeeded > cardIcons.length) {
+      pairsNeeded = cardIcons.length;
+    }
+
+    // 1. Obtenemos los iconos necesarios de la lista maestra
     List<IconData> neededIcons = cardIcons.sublist(0, pairsNeeded);
 
-    // 1. Duplicamos la lista para tener parejas
+    // 2. Duplicamos la lista para tener parejas (A y A, B y B...)
     List<IconData> allIcons = [...neededIcons, ...neededIcons];
     
-    // 2. Mezclamos los iconos aleatoriamente
+    // 3. Mezclamos los iconos aleatoriamente
     allIcons.shuffle();
 
-    // 3. Convertimos los iconos en objetos CardModel
+    // 4. Convertimos los iconos en objetos CardModel
     return List.generate(allIcons.length, (index) {
       return CardModel(
         index: index,

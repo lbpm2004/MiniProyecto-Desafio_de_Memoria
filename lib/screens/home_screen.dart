@@ -1,6 +1,7 @@
-// Archivo: lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
-import 'game_board.dart'; // Importamos la pantalla del juego
+import 'game_board.dart';
+import '../models/difficulty_model.dart';
+import '../utils/preferences_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,8 +11,32 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int highScore = 0; // Aquí guardaremos el récord más adelante
-  Difficulty selectedDifficulty = Difficulty.medio; //Valor por defecto de la dificultad
+  int highScore = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadScore();
+  }
+
+  // Cargar el récord cada vez que entramos a esta pantalla
+  Future<void> _loadScore() async {
+    final score = await PreferencesService.getBestScore();
+    setState(() {
+      highScore = score;
+    });
+  }
+
+  // Refrescar récord al volver del juego
+  void _startGame(Difficulty difficulty) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GameBoard(difficulty: difficulty),
+      ),
+    );
+    _loadScore(); // Recargar al volver
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,52 +50,54 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.gamepad, size: 80, color: Colors.deepPurple),
+            const Icon(Icons.psychology, size: 80, color: Colors.deepPurple),
             const SizedBox(height: 20),
             const Text(
-              '¡Juego de Memoria!',
+              'Desafío de Memoria',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            Text(
-              'Mejor Puntuación: $highScore intentos',
-              style: const TextStyle(fontSize: 18, color: Colors.grey),
+            // Muestra el Récord Guardado
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.shade50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.deepPurple.shade200)
+              ),
+              child: Text(
+                highScore == 0 
+                  ? 'Sin Récord aún' 
+                  : 'Mejor Récord: $highScore intentos',
+                style: const TextStyle(fontSize: 18, color: Colors.deepPurple),
+              ),
             ),
-            const SizedBox(height: 50),
-            Text('Selecciona dificultad:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, Colors.grey[700])),
-            DropdownButton<Difficulty>(
-              value: selectedDifficulty, 
-              onChanged: (Difficulty? newValue) {
-                setState(() {
-                  selectedDifficulty = newValue!;
-                });
-              },
-              items: Difficulty.values.map((Difficulty level) {
-                return DropdownMenuItem<Difficulty>(
-                  value: level,
-                  child: Text("$level.name (${level.rows}x${level.cols})", style: TextStyle(backgroundColor: level.colorDisplay)),
-                );
-              }).toList(),
-            ),
-            // Botón para ir al juego
-            ElevatedButton.icon(
-              onPressed: () {
-                // Navegación hacia el Tablero
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const GameBoard(difficulty: selectedDifficulty),
+            const SizedBox(height: 40),
+            const Text("Selecciona Dificultad:", style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 10),
+            
+            // Generamos botones dinámicamente
+            ...Difficulty.values.map((difficulty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: SizedBox(
+                  width: 250,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _startGame(difficulty),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: difficulty.colorDisplay,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.play_arrow),
+                    label: Text(
+                      difficulty.name.replaceAll('(PDF)', '').trim(), 
+                      style: const TextStyle(fontSize: 18),
+                    ),
                   ),
-                );
-              },
-              icon: const Icon(Icons.play_arrow),
-              label: const Text(
-                'Jugar Ahora',
-                style: TextStyle(fontSize: 20),
-              ),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-              ),
-            ),
+                ),
+              );
+            }),
           ],
         ),
       ),

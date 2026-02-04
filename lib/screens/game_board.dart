@@ -1,24 +1,29 @@
-// Archivo: lib/screens/game_board.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/card_model.dart';
 import '../utils/game_logic.dart';
 import '../widgets/card_widget.dart';
+import '../models/difficulty_model.dart';
+import '../utils/preferences_service.dart'; 
 
 class GameBoard extends StatefulWidget {
-  final Difficulty difficulty; //Trayendo la difficultad
-  const GameBoard({super.key});
+  final Difficulty difficulty;
+
+  const GameBoard({super.key, required this.difficulty});
 
   @override
   State<GameBoard> createState() => _GameBoardState();
 }
 
 class _GameBoardState extends State<GameBoard> {
-  // Variables de estado
-  List<CardModel> cards = [];          // Las cartas del tablero
-  List<int> flippedIndices = [];       // Índices de las cartas volteadas temporalmente
-  int attempts = 0;                    // Contador de intentos
-  bool isProcessing = false;           // Bloqueo para evitar clics rápidos
+  List<CardModel> cards = [];
+  List<int> flippedIndices = [];
+  int attempts = 0;
+  bool isProcessing = false;
+  
+  // Timer
+  Timer? _timer;
+  int _secondsElapsed = 0;
 
   @override
   void initState() {
@@ -26,18 +31,37 @@ class _GameBoardState extends State<GameBoard> {
     _startNewGame();
   }
 
+  @override
+  void dispose() {
+    _timer?.cancel(); 
+    super.dispose();
+  }
+
+  // --- LÓGICA DE TIEMPO Y JUEGO ---
+
+  void _startTimer() {
+    _timer?.cancel();
+    _secondsElapsed = 0;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _secondsElapsed++;
+        });
+      }
+    });
+  }
+
   void _startNewGame() {
     setState(() {
-      //Tomando en cuenta la dificultad para generar las cartas
       cards = GameLogic.generateCards(widget.difficulty);
       flippedIndices = [];
       attempts = 0;
       isProcessing = false;
+      _startTimer();
     });
   }
 
   void _onCardTap(int index) {
-    // 1. Validaciones básicas: Si ya hay 2 volteadas, si ya está resuelta o si es la misma carta
     if (isProcessing || cards[index].isFlipped || cards[index].isMatched) return;
 
     setState(() {
@@ -45,9 +69,8 @@ class _GameBoardState extends State<GameBoard> {
       flippedIndices.add(index);
     });
 
-    // 2. Si hay 2 cartas volteadas, verificamos
     if (flippedIndices.length == 2) {
-      isProcessing = true; // Bloqueamos interacción
+      isProcessing = true;
       attempts++;
       _checkForMatch();
     }
@@ -58,7 +81,6 @@ class _GameBoardState extends State<GameBoard> {
     final int index2 = flippedIndices[1];
 
     if (cards[index1].icon == cards[index2].icon) {
-      // CASO: ACIERTO
       setState(() {
         cards[index1].isMatched = true;
         cards[index2].isMatched = true;
@@ -67,7 +89,6 @@ class _GameBoardState extends State<GameBoard> {
       });
       _checkWinCondition();
     } else {
-      // CASO: FALLO (Esperamos 1 segundo y las volteamos de nuevo)
       Timer(const Duration(milliseconds: 1000), () {
         if (mounted) {
           setState(() {
@@ -81,56 +102,158 @@ class _GameBoardState extends State<GameBoard> {
     }
   }
 
-  void _checkWinCondition() {
-    // Si todas las cartas están emparejadas
+  void _checkWinCondition() async {
     if (cards.every((card) => card.isMatched)) {
-      // Aquí mostraremos el diálogo de victoria más adelante
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Juego Terminado! Felicidades!')),
-      );
+      _timer?.cancel(); 
+      await PreferencesService.saveScore(attempts);
+
+      if (mounted) {
+        _showWinDialog();
+      }
     }
+  }
+
+  void _showWinDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("¡Felicidades!", textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.emoji_events, size: 60, color: Colors.amber),
+            const SizedBox(height: 10),
+            Text("Has completado el nivel ${_getCleanTitle()}."),
+            const SizedBox(height: 10),
+            Text("Intentos: $attempts", style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text("Tiempo: ${_formatTime(_secondsElapsed)}"),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); 
+              Navigator.pop(context); 
+            },
+            child: const Text("Menú"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _startNewGame();
+            },
+            child: const Text("Jugar Otra vez"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTime(int seconds) {
+    final int minutes = seconds ~/ 60;
+    final int remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
+  // --- UI Y DISEÑO ---
+
+  Map<String, int> _getGridDimensions() {
+    String name = widget.difficulty.name.toLowerCase();
+    
+    if (name.contains("experto")) {
+      return {'col': 6, 'row': 6}; 
+    } else if (name.contains("avanzado")) {
+      return {'col': 5, 'row': 6}; 
+    } else {
+      return {'col': 4, 'row': 4}; 
+    }
+  }
+
+  String _getCleanTitle() {
+    String name = widget.difficulty.name.toUpperCase();
+    if (name.contains("EXPERTO")) return "EXPERTO";
+    if (name.contains("AVANZADO")) return "AVANZADO";
+    return name;
   }
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
+    final dimensions = _getGridDimensions();
+    final int cols = dimensions['col']!;
+    final int rows = dimensions['row']!;
 
-    final double boardWidth = screenHeight * 0.70; 
+    const double cardAspectRatio = 0.8; 
 
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('Intentos: $attempts'),
+        backgroundColor: widget.difficulty.colorDisplay,
+        foregroundColor: Colors.white,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Intentos: $attempts'),
+            Text(_formatTime(_secondsElapsed)), 
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _startNewGame,
-          )
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _startNewGame)
         ],
       ),
-      body: Center(
-        child: SizedBox(
-          width: boardWidth, 
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: cards.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: widget.difficulty.cols, //Con la cantidad de columnas correspondiente 
-                childAspectRatio: 0.9, 
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
+      body: Column(
+        children: [
+          // Título del nivel
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+              _getCleanTitle(),
+              style: TextStyle(
+                fontSize: 20, 
+                fontWeight: FontWeight.bold,
+                color: widget.difficulty.colorDisplay,
+                letterSpacing: 1.2
               ),
-              itemBuilder: (context, index) {
-                return CardWidget(
-                  card: cards[index],
-                  onTap: () => _onCardTap(index),
-                );
-              },
             ),
           ),
-        ),
+          
+          // ZONA DEL TABLERO
+          Expanded(
+            child: Padding(
+
+              padding: const EdgeInsets.all(24.0),
+              child: Center(
+
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+
+                    double boardAspectRatio = cols / (rows / cardAspectRatio);
+
+                    return AspectRatio(
+                      aspectRatio: boardAspectRatio,
+                      child: GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: cards.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: cols,
+                          childAspectRatio: cardAspectRatio,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                        itemBuilder: (context, index) {
+                          return CardWidget(
+                            card: cards[index],
+                            onTap: () => _onCardTap(index),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
