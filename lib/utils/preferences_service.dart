@@ -1,22 +1,29 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/difficulty_model.dart';
 
 class PreferencesService {
-  static const String _keyHighScore = 'high_score';
-
-  // Guardar puntaje (solo si es menor al actual)
-  static Future<void> saveScore(int moves) async {
+  
+  // Guardar puntaje
+  static Future<void> saveScore(Difficulty difficulty, int moves) async {
     final prefs = await SharedPreferences.getInstance();
-    final int currentBest = prefs.getInt(_keyHighScore) ?? 9999;
+    final String key = 'high_score_${difficulty.name}';
     
+    // Obtenemos el récord actual. Si es nulo (no existe), usamos 99999
+    final int currentBest = prefs.getInt(key) ?? 99999;
+    
+    // Depuración: Ver en consola qué está pasando
+    print("Intentando guardar para ${difficulty.name}. Actual: $currentBest, Nuevo: $moves");
+
     if (moves < currentBest) {
-      await prefs.setInt(_keyHighScore, moves);
+      await prefs.setInt(key, moves);
+      print("¡GUARDADO EXITOSO!");
     }
   }
 
-  // Leer puntaje
-  static Future<int> getBestScore() async {
+  // Leer puntaje (Devuelve 0 si no hay récord, para la UI)
+  static Future<int> getBestScore(Difficulty difficulty) async {
     final prefs = await SharedPreferences.getInstance();
-    // Si no hay récord, devolvemos 0 o un valor indicativo
-    return prefs.getInt(_keyHighScore) ?? 0;
+    final String key = 'high_score_${difficulty.name}';
+    return prefs.getInt(key) ?? 0; 
   }
 }

@@ -5,20 +5,24 @@ import '../models/card_model.dart';
 class CardWidget extends StatelessWidget {
   final CardModel card;
   final VoidCallback onTap;
+  final Color backColor; // NUEVO: Color dinámico
 
-  const CardWidget({super.key, required this.card, required this.onTap});
+  const CardWidget({
+    super.key, 
+    required this.card, 
+    required this.onTap,
+    required this.backColor, // Requerido
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: TweenAnimationBuilder<double>(
-        // Si la carta está volteada o encontrada, giramos 180 grados (pi), si no, 0.
         tween: Tween(begin: 0, end: (card.isFlipped || card.isMatched) ? pi : 0),
-        duration: const Duration(milliseconds: 400), // Duración del giro
+        duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOutBack, 
         builder: (context, angle, child) {
-          // Detectamos si el giro ha pasado la mitad (90 grados) para cambiar el contenido
           final bool isFront = angle >= (pi / 2);
 
           return Transform(
@@ -39,13 +43,16 @@ class CardWidget extends StatelessWidget {
     );
   }
 
-  // Diseño de la cara frontal (con el icono)
   Widget _buildFront() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: card.isMatched ? Colors.green.shade50 : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.deepPurple, width: 2),
+        // Usamos el mismo color del reverso para el borde frontal (queda muy elegante)
+        border: Border.all(
+          color: card.isMatched ? Colors.green : backColor, 
+          width: card.isMatched ? 4 : 2
+        ),
         boxShadow: const [
           BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(2, 2))
         ],
@@ -54,17 +61,18 @@ class CardWidget extends StatelessWidget {
         child: Icon(
           card.icon,
           size: 32,
-          color: Colors.deepPurple,
+          // El icono también combina con la dificultad
+          color: card.isMatched ? Colors.green : backColor,
         ),
       ),
     );
   }
 
-  // Diseño del reverso (color morado)
+  // Diseño del reverso (AHORA USA EL COLOR DINÁMICO)
   Widget _buildBack() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.deepPurple,
+        color: backColor, // <--- Aquí usamos el color de la dificultad
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
           BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(2, 2))
